@@ -26,7 +26,7 @@ const ZwierzetaList = () => {
     } catch (err) {
       showToast("Wystąpił błąd podczas pobierania danych", "error");
     } finally {
-      if (showLoader) setTimeout(() => setIsLoading(false), 1000);
+      if (showLoader) setIsLoading(false);
     }
   }, [filtr, setIsLoading]);
 
@@ -51,7 +51,7 @@ const ZwierzetaList = () => {
     } catch (err) {
       showToast("Wystąpił błąd", "error");
     } finally {
-      setTimeout(() => setIsLoading(false), 1000);
+      setIsLoading(false);
       setIsModalOpen(false);
     }
   };
