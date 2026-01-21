@@ -1,3 +1,4 @@
+import time
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
@@ -56,6 +57,7 @@ def pobierz_zwierzeta(
     if niebezpieczne is not None:
         query = query.filter(models.Zwierze.czy_niebezpieczne == niebezpieczne)
     
+    time.sleep(1000)
     return query.order_by(models.Zwierze.id).offset(skip).limit(limit).all()
 
 # 3. READ ONE - Pobieranie szczegółów jednego zwierzęcia
