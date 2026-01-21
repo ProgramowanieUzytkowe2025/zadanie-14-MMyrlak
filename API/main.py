@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 from contextlib import asynccontextmanager
 
 import models
@@ -28,6 +28,10 @@ app.add_middleware(
 # 1. CREATE - Dodawanie zwierzęcia
 @app.post("/zwierzeta/", response_model=schemas.ZwierzeResponse)
 def stworz_zwierze(zwierze: schemas.ZwierzeCreate, db: Session = Depends(get_db)):
+
+    if zwierze.wiek > 100:
+        raise HTTPException(status_code=400, detail="Zwierzę nie może mieć więcej niż 100 lat!")
+    
     nowe_zwierze = models.Zwierze(
         gatunek=zwierze.gatunek,
         wiek=zwierze.wiek,
@@ -42,9 +46,17 @@ def stworz_zwierze(zwierze: schemas.ZwierzeCreate, db: Session = Depends(get_db)
 
 # 2. READ ALL - Pobieranie listy
 @app.get("/zwierzeta/", response_model=List[schemas.ZwierzeResponse])
-def pobierz_zwierzeta(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    zwierzeta = db.query(models.Zwierze).order_by(models.Zwierze.id).offset(skip).limit(limit).all()
-    return zwierzeta
+def pobierz_zwierzeta(
+    niebezpieczne: Optional[bool] = None,
+    skip: int = 0, 
+    limit: int = 100, 
+    db: Session = Depends(get_db)
+):
+    query = db.query(models.Zwierze)
+    if niebezpieczne is not None:
+        query = query.filter(models.Zwierze.czy_niebezpieczne == niebezpieczne)
+    
+    return query.order_by(models.Zwierze.id).offset(skip).limit(limit).all()
 
 # 3. READ ONE - Pobieranie szczegółów jednego zwierzęcia
 @app.get("/zwierzeta/{zwierze_id}", response_model=schemas.ZwierzeResponse)
@@ -57,6 +69,10 @@ def pobierz_jedno_zwierze(zwierze_id: int, db: Session = Depends(get_db)):
 # 4. UPDATE - Edycja danych
 @app.put("/zwierzeta/{zwierze_id}", response_model=schemas.ZwierzeResponse)
 def aktualizuj_zwierze(zwierze_id: int, dane: schemas.ZwierzeCreate, db: Session = Depends(get_db)):
+
+    if dane.wiek > 100:
+        raise HTTPException(status_code=400, detail="Zwierzę nie może mieć więcej niż 100 lat!")
+    
     zwierze_db = db.query(models.Zwierze).filter(models.Zwierze.id == zwierze_id).first()
     if zwierze_db is None:
         raise HTTPException(status_code=404, detail="Nie znaleziono zwierzęcia")
@@ -77,6 +93,12 @@ def usun_zwierze(zwierze_id: int, db: Session = Depends(get_db)):
     zwierze = db.query(models.Zwierze).filter(models.Zwierze.id == zwierze_id).first()
     if zwierze is None:
         raise HTTPException(status_code=404, detail="Nie znaleziono zwierzęcia")
+    
+    if not zwierze.czy_niebezpieczne:
+        raise HTTPException(
+            status_code=400, 
+            detail="Wystąpił błąd: Nie można usuwać zwierząt oznaczonych jako łagodne (false)."
+        )
     
     db.delete(zwierze)
     db.commit()
